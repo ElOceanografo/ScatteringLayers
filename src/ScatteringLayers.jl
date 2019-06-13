@@ -15,7 +15,8 @@ export LayerMixture,
     refine_heights!,
     refine_σ!,
     refine_μσ!,
-    fit!
+    fit!,
+    fit
 
 include("layerfitting.jl")
 

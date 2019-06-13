@@ -37,3 +37,5 @@ ping_refined1 = mixpdf(mix, zz)
 mix = guesslayers(zz, ping, thresh=THRESH)
 fit!(mix, zz, ping, trace=true)
 ping_refined2 = mixpdf(mix, zz)
+
+mix1 = fit(mix, zz, ping, trace=true)

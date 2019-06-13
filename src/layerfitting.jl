@@ -99,3 +99,8 @@ function fit!(mix, z, ping; tol=eps(), trace=false)
         ss = opt.minimum
     end
 end
+
+function fit(mix, z, ping; tol=eps(), trace=false)
+    mix1 = deepcopy(mix)
+    fit!(mix, z, ping; tol=eps(), trace=false)
+end
