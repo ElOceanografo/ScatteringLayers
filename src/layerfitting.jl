@@ -1,9 +1,9 @@
 
-struct LayerMixture
-    μ
-    σ
-    N
-    k
+struct LayerMixture{T<:Real, I<:Integer}
+    μ::Vector{T}
+    σ::Vector{T}
+    N::Vector{T}
+    k::I
 end
 
 function getpeaks(z::AbstractVector, ping::AbstractVector; thresh=0, order=1, dz=1.0)
