@@ -84,7 +84,11 @@ function refine_μσ!(mix::LayerMixture, z, ping)
     return fit1
 end
 
-function fit!(mix, z, ping; tol=eps(), trace=false)
+const refine_funcs = Dict(:σ => refine_σ!, :μσ => refine_μσ!,
+    :widths => refine_σ!, :widths_locs => refine_μσ!)
+
+function fit!(mix, z, ping; tol=eps(), trace=false, refine=:σ)
+    refiner! = refine_funcs[refine]
     basis = getbasis(mix, z)
     ss = Inf
     while true
@@ -100,7 +104,20 @@ function fit!(mix, z, ping; tol=eps(), trace=false)
     end
 end
 
-function fit(mix, z, ping; tol=eps(), trace=false)
+function fit(mix, z, ping; tol=eps(), trace=false, refine=:σ)
     mix1 = deepcopy(mix)
-    fit!(mix, z, ping; tol=eps(), trace=false)
+    fit!(mix1, z, ping; tol=eps(), trace=false)
+    return mix1
+end
+
+function fitlayers(echo::Echogram; thresh=0, tol=eps(), refine=:σ)
+    layers = []
+    n = size(echo, 2)
+    z = echo.z
+    for i in 1:n
+        mix = guesslayers(z, echo[:, i], thresh=thresh)
+        fit!(mix, z, echo[:, i], tol=tol, refine=refine)
+        push!(layers, mix)
+    end
+    return layers
 end

@@ -6,7 +6,11 @@ using Distributions
 using DiffEqOperators
 using Images
 
-export LayerMixture,
+export AbstractSpaceTimePoint,
+    SpacePoint,
+    SpaceTimePoint,
+    Echogram,
+    LayerMixture,
     getpeaks,
     guesslayers,
     mixpdf,
@@ -16,8 +20,10 @@ export LayerMixture,
     refine_σ!,
     refine_μσ!,
     fit!,
-    fit
+    fit,
+    fitlayers
 
+include("echograms.jl")
 include("layerfitting.jl")
 
 end # module

@@ -66,3 +66,13 @@ mix1.σ .+= max(0, randn())
 mix1.N .+= 1e-9randn()
 fit!(mix1, zz, ping)
 plot!(zz, mixpdf(mix1, zz), color=:black, alpha=0.2)
+
+x = SpacePoint([36.712110, -122.187028])
+echogram = Echogram(imfilter(echo, Kernel.gaussian(0.5)), zz, repeat([x], n))
+layers = fitlayers(echogram, thresh=THRESH)
+[l.k for l in layers]
+
+p = scatter(ones(layers[1].k), layers[1].μ)
+for i in 2:8
+      scatter!(p, i*ones(layers[i].k), layers[i].μ)
+end
