@@ -6,18 +6,18 @@ struct LayerMixture{T<:Real, I<:Integer}
     k::I
 end
 
-function getpeaks(z::AbstractVector, ping::AbstractVector; thresh=0, order=1, dz=1.0)
+function getpeaks(ping::Ping; thresh=0, order=1, dz=1.0)
     n = length(ping)
     D2 = DerivativeOperator{Float64}(2, order, dz, n, :Dirichlet0, :Dirichlet0)
     ii = [ci.I[1] for ci in findlocalmaxima(ping) if ping[ci] > thresh]
     curvature = D2 * ping
     jj = findall(x -> x < 0, curvature)
     ii = intersect(ii, jj)
-    return z[ii], ping[ii], curvature[ii]
+    return depths(ping)[ii], ping[ii], curvature[ii]
 end
 
-function guesslayers(z, ping; thresh=0, order=1, dz=1.0)
-    μ, p, c = getpeaks(z, ping, thresh=thresh, order=order, dz=dz)
+function guesslayers(ping::Ping; thresh=0, order=1, dz=1.0)
+    μ, p, c = getpeaks(ping, thresh=thresh, order=order, dz=dz)
     σ = sqrt.(-p ./ c)
     N = p .* sqrt.(2pi * σ.^2)
     k = length(μ)
@@ -47,36 +47,36 @@ function getbasis(mix::LayerMixture, z::AbstractVector)
     return res
 end
 
-function refine_heights!(mix::LayerMixture, basis, z, ping)
+function refine_heights!(mix::LayerMixture, basis, ping)
     masked = copy(basis)
     for i in 1:mix.k
-        imask = findall(z -> abs(z - mix.μ[i]) > mix.σ[i], z)
+        imask = findall(z -> abs(z - mix.μ[i]) > mix.σ[i], depths(ping))
         masked[imask, i] .= 0
     end
-    N1 = nnls(basis, ping)
+    N1 = nnls(basis, ping.data)
     mix.N .= N1
 end
 
-function cost(μ, σ, N, z, ping)
-    model = mixpdf(μ, σ, N, z)
+function cost(μ, σ, N, ping)
+    model = mixpdf(μ, σ, N, depths(ping))
     # return sum((ping.-model).^2 .* ping)
     return sum(abs2, ping - model)
     # return sum(log.(ping) .* (log.(model) .- log.(ping)))
 end
 
-function refine_σ!(mix::LayerMixture, z, ping)
+function refine_σ!(mix::LayerMixture, ping)
     μ, σ, N, k  = mix.μ, mix.σ, mix.N, mix.k
-    fit1 = optimize(θ -> cost(mix.μ, exp.(θ), N, z, ping), log.(σ))
+    fit1 = optimize(θ -> cost(mix.μ, exp.(θ), N, ping), log.(σ))
     mix.σ[:] .= exp.(fit1.minimizer)
     return fit1
 end
 
-function refine_μσ!(mix::LayerMixture, z, ping)
+function refine_μσ!(mix::LayerMixture, ping)
     μ, σ, N, k  = mix.μ, mix.σ, mix.N, mix.k
     lx = [fill(minimum(mix.μ), mix.k); fill(-Inf, mix.k)]
     ux = [fill(maximum(mix.μ), mix.k); fill(log(25), mix.k)]
     θ = [mix.μ; log.(mix.σ)]
-    fit1 = optimize(θ -> cost(θ[1:k], exp.(θ[k+1:end]), N, z, ping), θ)
+    fit1 = optimize(θ -> cost(θ[1:k], exp.(θ[k+1:end]), N, ping), θ)
     μ1 = fit1.minimizer[1:k]
     σ1 = exp.(fit1.minimizer[k+1:end])
     mix.μ[:] .= μ1
@@ -87,13 +87,13 @@ end
 const refine_funcs = Dict(:σ => refine_σ!, :μσ => refine_μσ!,
     :widths => refine_σ!, :widths_locs => refine_μσ!)
 
-function fit!(mix, z, ping; tol=eps(), trace=false, refine=:σ)
+function fit!(mix, ping; tol=eps(), trace=false, refine=:σ)
     refiner! = refine_funcs[refine]
-    basis = getbasis(mix, z)
+    basis = getbasis(mix, depths(ping))
     ss = Inf
     while true
-        refine_heights!(mix, basis, z, ping)
-        opt = refine_σ!(mix, z, ping)
+        refine_heights!(mix, basis, ping)
+        opt = refine_σ!(mix, ping)
         if trace
             println(opt.minimum)
         end
@@ -104,9 +104,9 @@ function fit!(mix, z, ping; tol=eps(), trace=false, refine=:σ)
     end
 end
 
-function fit(mix, z, ping; tol=eps(), trace=false, refine=:σ)
+function fit(mix, ping; tol=eps(), trace=false, refine=:σ)
     mix1 = deepcopy(mix)
-    fit!(mix1, z, ping; tol=eps(), trace=false)
+    fit!(mix1, ping; tol=eps(), trace=false)
     return mix1
 end
 
@@ -114,9 +114,10 @@ function fitlayers(echo::Echogram; thresh=0, tol=eps(), refine=:σ)
     layers = []
     n = size(echo, 2)
     z = echo.z
-    for i in 1:n
-        mix = guesslayers(z, echo[:, i], thresh=thresh)
-        fit!(mix, z, echo[:, i], tol=tol, refine=refine)
+    println("Detecting layers...")
+    @showprogress for i in 1:n
+        mix = guesslayers(getping(echo, i), thresh=thresh)
+        fit!(mix, getping(echo, i), tol=tol, refine=refine)
         push!(layers, mix)
     end
     return layers

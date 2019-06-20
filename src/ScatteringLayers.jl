@@ -5,11 +5,16 @@ using NNLS
 using Distributions
 using DiffEqOperators
 using Images
+using ProgressMeter
 
 export AbstractSpaceTimePoint,
     SpacePoint,
     SpaceTimePoint,
     Echogram,
+    Ping,
+    depths,
+    spacetime,
+    getping,
     LayerMixture,
     getpeaks,
     guesslayers,
