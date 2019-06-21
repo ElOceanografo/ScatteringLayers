@@ -88,19 +88,21 @@ const refine_funcs = Dict(:σ => refine_σ!, :μσ => refine_μσ!,
     :widths => refine_σ!, :widths_locs => refine_μσ!)
 
 function fit!(mix, ping; tol=eps(), trace=false, refine=:σ)
-    refiner! = refine_funcs[refine]
     basis = getbasis(mix, depths(ping))
-    ss = Inf
-    while true
-        refine_heights!(mix, basis, ping)
-        opt = refine_σ!(mix, ping)
-        if trace
-            println(opt.minimum)
+    if refine != :none
+        refiner! = refine_funcs[refine]
+        ss = Inf
+        while true
+            refine_heights!(mix, basis, ping)
+            opt = refine_σ!(mix, ping)
+            if trace
+                println(opt.minimum)
+            end
+            if ss - opt.minimum < tol
+                return opt
+            end
+            ss = opt.minimum
         end
-        if ss - opt.minimum < tol
-            return opt
-        end
-        ss = opt.minimum
     end
 end
 
