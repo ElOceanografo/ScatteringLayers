@@ -116,7 +116,7 @@ function fitlayers(echo::Echogram; thresh=0, tol=eps(), refine=:σ)
     layers = []
     n = size(echo, 2)
     z = echo.z
-    println("Detecting layers...")
+    printstyled("Detecting layers...\n", color=:green)
     @showprogress for i in 1:n
         mix = guesslayers(getping(echo, i), thresh=thresh)
         fit!(mix, getping(echo, i), tol=tol, refine=refine)
